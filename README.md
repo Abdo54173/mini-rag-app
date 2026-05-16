@@ -87,3 +87,9 @@ OPENAI_API_KEY=your_api_key_here
 ```bash
 python app.py
 ```
+
+### run the fastapi server 
+
+```bash
+$ uvicorn main:app --reload --host 0.0.0.0 --port 5000
+```
