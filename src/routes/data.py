@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, UploadFile ,status
 from fastapi.responses import JSONResponse
 from src.helpers.config import get_settings, Settings
-from src.controllers import DataController ,ProjectController
+from src.controllers import DataController ,ProjectController ,ProcessController
 import aiofiles
 from src.models.enums import ResponseSignals
 import os
 import logging
+from .schemes.data import ProcessRequest
 
 logger = logging.getLogger('uvicorn.error')
 
@@ -33,7 +34,7 @@ async def upload_data(
         )
 
     project_dir_path = ProjectController().get_project_path(project_id=project_id)
-    file_path = data_controller.generate_unique_filename(orig_file_name=file.filename, project_id=project_id)
+    file_path , file_id= data_controller.generate_unique_filepath(orig_file_name=file.filename, project_id=project_id)
 
     try:
         async with aiofiles.open(file_path, "wb") as f:
@@ -53,6 +54,35 @@ async def upload_data(
 
     return JSONResponse(
             content ={
-                "signal" : ResponseSignals.FILE_UPLOADED_SUCCESS.value
+                "signal" : ResponseSignals.FILE_UPLOADED_SUCCESS.value,
+                "file_id" : file_id
             }
         )
+
+
+@data_router.post("/process/{project_id}")
+async def process_endpoint(project_id: str, process_request: ProcessRequest):
+    file_id = process_request.file_id
+    chunk_size = process_request.chunk_size
+    overlap_size = process_request.overlap_size
+
+    process_controller = ProcessController(project_id=project_id)
+
+    file_content = process_controller.get_file_content(file_id=file_id)
+
+    file_chunks = process_controller.process_file_content(
+        file_content=file_content,
+        file_id=file_id,
+        chunk_size=chunk_size,
+        overlap_size=overlap_size
+        )
+    
+    if file_chunks is None or len(file_chunks) == 0:
+        return JSONResponse(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            content ={
+                "signal" : ResponseSignals.PROCESSING_FAILED.value,
+            }
+        )
+
+    return file_chunks    
