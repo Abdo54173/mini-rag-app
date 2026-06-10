@@ -1,6 +1,6 @@
 from fastapi import APIRouter, FastAPI,  status, Request
 from fastapi.responses import JSONResponse
-from routes.schemes.nlp import PushRequest
+from src.routes.schemes.nlp import PushRequest
 from src.models.ProjectModel import ProjectModel
 from src.models.ChunkModel import ChunkModel 
 from src.controllers.NLPController import NLPController
@@ -22,7 +22,11 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
         db_client=request.app.db_client
     )
 
-    project = project_model.get_project_or_create_one(
+    chunk_model= await ChunkModel.create_instance(
+        db_client=request.app.db_client
+    )
+
+    project =await project_model.get_project_or_create_one(
         project_id=project_id
     )
 
@@ -40,3 +44,38 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
         embedding_client=request.app.embedding_client,
     )
 
+    has_records = True
+    page_no = 1
+    inserted_items_count = 0
+
+    while has_records:
+        page_chunks =await chunk_model.get_project_chunks(project_id=project.id, page_no=page_no)
+        if len(page_chunks):
+            page_no += 1
+
+        if not page_chunks or len(page_chunks) == 0:
+            has_records = False
+            break
+
+        is_iserted= nlp_controller.index_into_vector_db(
+            project=project,
+            chunks=page_chunks,
+            do_reset=push_request.do_reset
+        )
+
+        if not is_iserted:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "signal": ResponseSignals.INSERT_INTO_VECTORDB_ERROR.value
+                } 
+            )
+        
+        inserted_items_count += len(page_chunks)
+
+    return JSONResponse(
+                content={
+                    "signal": ResponseSignals.INSERT_INTO_VECTORDB_SUCCESS.value,
+                    "inserted_items_count": inserted_items_count
+                } 
+            )
