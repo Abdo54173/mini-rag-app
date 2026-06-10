@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.routes import base ,data
+from src.routes import base ,data, nlp
 from src import controllers
 from motor.motor_asyncio import AsyncIOMotorClient
 from src.helpers.config import get_settings
@@ -43,4 +43,5 @@ app.add_event_handler("shutdown", shutdown_span)
 
 app.include_router(base.base_router)
 app.include_router(data.data_router)
+app.include_router(nlp.nlp_router)
 
