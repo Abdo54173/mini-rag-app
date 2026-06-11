@@ -78,6 +78,9 @@ class GroqProvider(LLMInterface):
 
     def embed_text(self, text: str, document_type: str = None):
         return None
+    
+    def embed_texts(self, texts: list[str], document_type: str = None):
+        pass
 
     def construct_prompt(self, prompt: str, role: str):
         return {

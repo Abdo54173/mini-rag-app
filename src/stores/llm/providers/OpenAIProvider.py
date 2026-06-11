@@ -95,6 +95,9 @@ class OpenAIProvider(LLMInterface):
         
         return response.data[0].embedding
     
+    def embed_texts(self, texts: list[str], document_type: str = None):
+        pass
+    
     def construct_prompt(self, prompt: str, role: str):
         return {
             "role" : role,
