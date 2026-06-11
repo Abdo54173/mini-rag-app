@@ -36,11 +36,10 @@ class NLPController(BaseController):
 
         texts = [c.chunk_text for c in chunks]
         metadata = [c.chunk_metadata for c in chunks]
-        vectors = [
-            self.embedding_client.embed_text(text=text,
-                                             document_type=DocumentTypeEnum.DOCUMENT.value)
-            for text in texts
-        ]
+        vectors = self.embedding_client.embed_texts(
+            texts=texts,
+            document_type=DocumentTypeEnum.DOCUMENT.value
+        )
 
         _ = self.vectordb_client.create_collection(
             collection_name=collection_name,
@@ -57,3 +56,28 @@ class NLPController(BaseController):
         )
 
         return True
+    
+    def search_vector_db_collection(self, project: Project, text: str, limit: int = 10):
+
+        collection_name =self.create_collection_name(project_id=project.project_id)
+
+        vector = self.embedding_client.embed_text(
+            text=text,
+            document_type=DocumentTypeEnum.QUERY.value
+        )
+
+        if not vector or len(vector) == 0:
+            return False
+        
+        results = self.vectordb_client.search_by_vector(
+            collection_name=collection_name,
+            vector=vector,
+            limit=limit
+        )
+
+        if not results :
+            return False
+
+        return json.loads(
+            json.dumps(results, default=lambda x: x.__dict__)
+        )
