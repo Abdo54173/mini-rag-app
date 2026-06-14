@@ -12,7 +12,7 @@ logger = logging.getLogger('uvicorn.error')
 
 nlp_router = APIRouter(
     prefix="/api/v1/nlp",
-    tags=["api_v1","nlp"],
+    tags=["nlp"],
 )
 
 @nlp_router.post("/index/push/{project_id}")
@@ -147,6 +147,6 @@ async def search_index(request: Request, project_id: str, search_request: search
     return JSONResponse(
             content={
                 "signal": ResponseSignals.VECTORDB_SEARCH_SUCCESS.value,
-                "results":results
+                "results":[ result.dict() for result in results ]
             } 
         )
