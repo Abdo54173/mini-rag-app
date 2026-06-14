@@ -26,6 +26,8 @@ class GroqProvider(LLMInterface):
             base_url="https://api.groq.com/openai/v1"
         )
 
+        self.enums = GroqEnums
+
         self.logger = logging.getLogger(__name__)
 
     def set_generation_model(self, model_id: str):
