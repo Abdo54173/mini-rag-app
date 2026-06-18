@@ -10,8 +10,8 @@ from .schemes.data import ProcessRequest
 from src.models.ProjectModel import ProjectModel
 from src.models.ChunkModel import ChunkModel
 from src.models.AssetModel import AssetModel
-from src.models.db_schemes.data_chunk import DataChunk
-from src.models.db_schemes.asset import Asset
+from src.models.db_schemes.minirag.schemes.datachunk import DataChunk
+from src.models.db_schemes.minirag.schemes.asset import Asset
 from src.models.enums.AssetTypeEnum import AssetTypeEnum
 
 logger = logging.getLogger('uvicorn.error')
@@ -154,7 +154,7 @@ async def process_endpoint(
         )
 
         project_files_ids ={
-            record.asset_project_id : record.asset_name
+            record.asset_id : record.asset_name
             for record in project_files
         }
     
@@ -211,7 +211,6 @@ async def process_endpoint(
             DataChunk(
                 chunk_text=chunk.page_content,
                 chunk_metadata=chunk.metadata,
-                chunk_order=i + 1,
                 chunk_project_id=project.project_id,
                 chunk_asset_id=asset_id
             )
