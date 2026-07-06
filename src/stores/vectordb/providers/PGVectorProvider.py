@@ -141,4 +141,73 @@ class PGVectorProvider(VectorDBInterface):
                     })
                     await session.commit()
         return True
+    
+    async def insert_many(self, collection_name: str, texts: list, vectors: list,
+                         metadata: list = None,
+                         record_ids: list = None, batch_size: int = 50):
         
+        is_collection_existed = await self.is_collection_existed(collection_name=collection_name)
+        if not is_collection_existed:
+            self.logger.error(f"Can not insert new record to non_existed collection: {collection_name}")
+            return False
+        
+        if len(vectors) != len(record_ids):
+            self.logger.error(f"Invalide data items for collection : {collection_name}")
+            return False
+        
+        if not metadata or len(metadata) == 0:
+            metadata = [None] * len(texts)
+        
+        async with self.db_client() as session:
+                async with session.begin():
+                    for i in range(0, len(texts), batch_size):
+                        batch_texts = vectors[i:i+batch_size]
+                        batch_vectors = texts[i:i+batch_size]
+                        batch_metadata = metadata[i:i+batch_size]
+                        batch_record_ids = record_ids[i:i+batch_size]
+
+                        values = []
+
+                        for _text, _vector, _metadata, _record_id in zip(batch_texts, batch_vectors, batch_metadata, batch_record_ids):
+                            values.append({
+                                'text': _text,
+                                'vector': "[" + ",".join([ str(v) for v in _vector ]) + "]",
+                                'metadata': _metadata,
+                                'chunkd_id': _record_id
+                            })
+                        
+                        batch_insert_sql = sql_text(f'INSERT INTO {collection_name}'
+                                                    f'({PgVectorTableScemeEnums.TEXT.value}, {PgVectorTableScemeEnums.VECTOR.value}, {PgVectorTableScemeEnums.METADATA.value}, {PgVectorTableScemeEnums.CHUNK_ID.value})'
+                                                    'VALUES (:text, :vector, :metadata, :chunk_id)'
+                                                    )
+                        
+                        await session.execute(batch_insert_sql, values)
+
+        return True   
+
+    async def search_by_vector(self, collection_name: str, vector: list, limit: int) -> List[RetrievedDocument]:
+
+        is_collection_existed = await self.is_collection_existed(collection_name=collection_name)
+        if not is_collection_existed:
+            self.logger.error(f"Can not search for record to non_existed collection: {collection_name}")
+            return False
+        
+        vector = "[" + ",".join([ str(v) for v in vector ]) + "]"
+        async with self.db_client() as session:
+                async with session.begin():
+                    search_sql = sql_text(f'SELECT {PgVectorTableScemeEnums.TEXT.value} as text, 1 - ({PgVectorTableScemeEnums.VECTOR.value} <=> :vector) as score',
+                                           ' FROM {collection_name}'
+                                           'ORDER BY score DESC '
+                                           f'LIMIT{limit}'
+                                           )
+                    result = await session.execute(search_sql, {"vector": vector})
+
+                    records = result.fetchLL()
+
+                    return [
+                        RetrievedDocument(
+                            text=record.text,
+                            score=record.score
+                        )
+                        for record in records
+                    ]
