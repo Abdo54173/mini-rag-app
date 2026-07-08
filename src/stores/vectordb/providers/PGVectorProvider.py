@@ -9,11 +9,11 @@ import json
 class PGVectorProvider(VectorDBInterface):
 
     def __init__(self, db_client, default_vector_size: int = 786,
-                       distance_methode: str = None, index_threshold: int=100):
+                       distance_method: str = None, index_threshold: int=100):
         
         self.db_client = db_client
         self.default_vector_size = default_vector_size
-        self.distance_methode = distance_methode
+        self.distance_method = distance_method
         self.index_threshold=index_threshold
 
         self.pgvector_table_prefix = PgVectorTableScemeEnums._PREFIX.value
@@ -155,7 +155,7 @@ class PGVectorProvider(VectorDBInterface):
                     index_name = self.default_index_name(collection_name)
                     create_idx_sql = sql_text(
                                                 f'CREATE INDEX {index_name} ON {collection_name} '
-                                                f'USING {index_type} ({PgVectorTableScemeEnums.VECTOR.value} {self.distance_methode})'
+                                                f'USING {index_type} ({PgVectorTableScemeEnums.VECTOR.value} {self.distance_method})'
                                             )
                     await session.execute(create_idx_sql)
 
@@ -169,7 +169,7 @@ class PGVectorProvider(VectorDBInterface):
                 async with session.begin():
                     drop_sql = sql_text(f'DROP INDEX IF EXISTS {index_name}')
                     await session.execute(drop_sql)
-                    
+
         return await self.create_vector_index(collection_name=collection_name, index_type=index_type)
 
     
